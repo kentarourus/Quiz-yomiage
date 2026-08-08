@@ -96,20 +96,30 @@ body {
 }
 
 .select-source-hdr {
-  background-color: var(--bg-dark);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: var(--text-primary);
-  padding: 0.5rem 0.6rem;
-  border-radius: 10px;
-  font-size: 0.82rem;
+  background-color: rgba(15, 23, 42, 0.95);
+  border: 1.5px solid rgba(56, 189, 248, 0.5);
+  color: #f8fafc;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
   font-weight: 800;
   cursor: pointer;
-  max-width: 135px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  outline: none;
+  font-family: inherit;
 }
 
-.select-source-hdr:focus {
-  outline: none;
+.select-source-hdr:hover, .select-source-hdr:focus {
   border-color: var(--primary-color);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+select option, .select-source-hdr option {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  padding: 0.6rem !important;
+  font-weight: 700;
 }
 
 .btn {
@@ -731,6 +741,31 @@ input[type="range"] {
 
 /* Mobile Media Queries */
 @media (max-width: 480px) {
+  .app-header {
+    padding: 0.7rem 0.8rem;
+  }
+
+  .app-title {
+    font-size: 1.05rem;
+  }
+
+  .select-source-hdr {
+    max-width: 125px;
+    padding: 0.45rem 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  .btn-gacha {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .btn-circle-settings {
+    width: 40px;
+    height: 40px;
+    font-size: 0.8rem;
+  }
+
   .btn-circle {
     width: 195px;
     height: 195px;
