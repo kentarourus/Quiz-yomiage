@@ -1,6 +1,6 @@
 /**
  * Web Speech API (SpeechSynthesis) を制御する読み上げエンジン
- * 高精度な文字位置追跡（charIndex）と即時カットアウトを実現します。
+ * ブラウザのonboundary不具合をカバーするハイブリッド文字トラッキングエンジン搭載
  */
 class SpeechEngine {
   constructor() {
@@ -16,6 +16,8 @@ class SpeechEngine {
     this.isPlaying = false;
     this.isPaused = false;
     this.currentUtterance = null;
+    this.timer = null;
+    this.startTime = 0;
 
     // イベントコールバック
     this.onStart = null;
@@ -82,11 +84,11 @@ class SpeechEngine {
   }
 
   /**
-   * テキストの読み上げを開始
+   * テキストの読み上げを開始 (ハイブリッドリアルタイム文字トラッキング)
    * @param {string} text 読み上げる問題文
    */
   speak(text) {
-    this.stop(); // 既存の読み上げを停止
+    this.stop(); // 既存の読み上げ・タイマーを停止
 
     if (!this.synth) {
       console.warn("Speech Synthesis is not supported in this browser.");
@@ -109,16 +111,43 @@ class SpeechEngine {
     utterance.pitch = this.pitch;
     utterance.volume = this.volume;
 
+    // 日本語1文字あたりのミリ秒推定値 (速度設定 rate を自動反映)
+    // 1.0x 時でおよそ165ms/文字
+    const msPerChar = Math.max(50, Math.round(165 / (this.rate || 1.0)));
+
     // 開始イベント
     utterance.onstart = () => {
       this.isPlaying = true;
+      this.startTime = Date.now();
       if (this.onStart) this.onStart();
+
+      // 初回1文字目を即時反映
+      if (this.onBoundary) this.onBoundary(0, 1);
+
+      // 高精度文字タイマーを開始 (ブラウザのonboundary非対応対策)
+      clearInterval(this.timer);
+      this.timer = setInterval(() => {
+        if (!this.isPlaying) {
+          clearInterval(this.timer);
+          return;
+        }
+        const elapsed = Date.now() - this.startTime;
+        const estimatedIndex = Math.min(this.currentText.length, Math.floor(elapsed / msPerChar));
+
+        if (estimatedIndex > this.currentCharIndex) {
+          this.currentCharIndex = estimatedIndex;
+          if (this.onBoundary) {
+            this.onBoundary(this.currentCharIndex, 1);
+          }
+        }
+      }, 40);
     };
 
-    // 境界位置イベント（文字トラッキング）
+    // 境界位置イベント（ブラウザがonboundaryに対応している場合は位置補正）
     utterance.onboundary = (event) => {
-      if (event.name === 'word' || event.name === 'sentence' || typeof event.charIndex === 'number') {
+      if (typeof event.charIndex === 'number' && event.charIndex > 0) {
         this.currentCharIndex = event.charIndex;
+        this.startTime = Date.now() - (this.currentCharIndex * msPerChar);
         if (this.onBoundary) {
           this.onBoundary(this.currentCharIndex, event.charLength || 1);
         }
@@ -127,15 +156,18 @@ class SpeechEngine {
 
     // 終了イベント
     utterance.onend = () => {
+      clearInterval(this.timer);
       if (this.isPlaying) {
         this.isPlaying = false;
         this.currentCharIndex = this.currentText.length;
+        if (this.onBoundary) this.onBoundary(this.currentText.length, 1);
         if (this.onEnd) this.onEnd();
       }
     };
 
     utterance.onerror = (e) => {
       console.error("SpeechSynthesis error:", e);
+      clearInterval(this.timer);
       this.isPlaying = false;
       if (this.onEnd) this.onEnd();
     };
@@ -144,9 +176,10 @@ class SpeechEngine {
   }
 
   /**
-   * 早押し時：即座に読み上げを停止し、現在の文字位置を返す
+   * 早押し時：即座に読み上げとタイマーを停止し、現在の文字位置を返す
    */
   buzzStop() {
+    clearInterval(this.timer);
     const buzzIndex = this.currentCharIndex;
     this.stop();
     return buzzIndex;
@@ -156,6 +189,7 @@ class SpeechEngine {
    * 完全に停止
    */
   stop() {
+    clearInterval(this.timer);
     if (this.synth) {
       this.synth.cancel();
     }
