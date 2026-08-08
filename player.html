@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>早押しボタン - スマホコントローラー</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&family=Outfit:wght@800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: 'Noto Sans JP', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem 1rem;
+      overflow: hidden;
+    }
+
+    .player-header {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .player-name-box {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #1e293b;
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      border: 1px solid #334155;
+    }
+
+    .player-name-box label {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .player-name-box input {
+      background: transparent;
+      border: none;
+      color: #38bdf8;
+      font-weight: 800;
+      font-size: 1rem;
+      text-align: center;
+      outline: none;
+      width: 120px;
+    }
+
+    .status-banner {
+      font-size: 1.1rem;
+      font-weight: 800;
+      padding: 0.5rem 1.5rem;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    .status-banner.buzzed-me {
+      background: #f43f5e;
+      color: #fff;
+      box-shadow: 0 0 25px rgba(244, 63, 94, 0.6);
+      animation: pulse 0.8s infinite;
+    }
+
+    .status-banner.buzzed-other {
+      background: #475569;
+      color: #94a3b8;
+      border-color: #64748b;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    /* Giant Mobile Buzzer */
+    .buzzer-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .mobile-buzz-btn {
+      width: min(280px, 75vw);
+      height: min(280px, 75vw);
+      border-radius: 50%;
+      border: 8px solid #9f1239;
+      background: radial-gradient(circle at 30% 30%, #fb7185, #e11d48, #881337);
+      box-shadow: 0 15px 40px rgba(225, 29, 72, 0.5), inset 0 -10px 20px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      transition: transform 0.08s ease, filter 0.08s ease;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-buzz-btn:active,
+    .mobile-buzz-btn.pressed {
+      transform: scale(0.92);
+      filter: brightness(1.25);
+      box-shadow: 0 5px 20px rgba(225, 29, 72, 0.6), inset 0 6px 15px rgba(0, 0, 0, 0.8);
+    }
+
+    .mobile-buzz-btn .icon {
+      font-size: 3.5rem;
+      line-height: 1;
+    }
+
+    .mobile-buzz-btn .text {
+      font-size: 2.4rem;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+    }
+
+    .mobile-buzz-btn .sub {
+      font-size: 0.9rem;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      opacity: 0.8;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.2rem 0.8rem;
+      border-radius: 9999px;
+      margin-top: 0.3rem;
+    }
+
+    .player-footer {
+      width: 100%;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="player-header">
+    <div class="player-name-box">
+      <label for="player-name-input">名前:</label>
+      <input type="text" id="player-name-input" value="プレイヤー1" maxlength="10">
+    </div>
+    <div id="status-banner" class="status-banner">待機中</div>
+  </div>
+
+  <div class="buzzer-wrapper">
+    <button id="btn-mobile-buzz" class="mobile-buzz-btn">
+      <span class="icon">🔴</span>
+      <span class="text">早押し！</span>
+      <span class="sub">TAP HERE</span>
+    </button>
+  </div>
+
+  <div class="player-footer">
+    <span>⚡ 早押しクイズ スマホコントローラー</span>
+  </div>
+
+  <script src="js/sound.js"></script>
+  <script src="js/player.js"></script>
+</body>
+</html>
