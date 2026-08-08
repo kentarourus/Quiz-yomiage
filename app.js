@@ -181,10 +181,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateScoreDisplay();
 
-    // モード設定が保存されていない場合、選択モーダルを表示
-    if (!localStorage.getItem("quiz_yomiage_mode")) {
-      elements.modeSelectModal.classList.remove("hidden");
-    }
+    // モード選択画面を一番最初に見せる（アプリ起動時に毎回表示）
+    elements.modeSelectModal.classList.remove("hidden");
   }
 
   // ----------------------------------------------------

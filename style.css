@@ -1187,3 +1187,165 @@ textarea:focus, input:focus, select:focus {
   gap: 0.75rem;
   width: 100%;
 }
+
+/* ==========================================
+   Smartphone / Mobile Responsiveness & Touch UI
+   ========================================== */
+
+/* Universal Touch Feedback */
+button, .mode-card, .btn, .giant-buzz-button {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+button:active, .mode-card:active, .btn:active {
+  transform: scale(0.97) !important;
+}
+
+@media (max-width: 640px) {
+  /* Header & Navigation */
+  .app-header {
+    padding: 0.6rem 0.8rem;
+    gap: 0.5rem;
+  }
+
+  .app-title {
+    font-size: 1rem;
+  }
+
+  .nav-tabs {
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .tab-btn {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .header-actions .btn {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  /* Stage Info Bar & Mode Bar */
+  .mode-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+  }
+
+  .mode-bar-buttons {
+    width: 100%;
+  }
+
+  .mode-bar-btn {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .stage-info-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .stage-quick-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* Mode Select Modal Overlay on Mobile */
+  .mode-modal-content {
+    padding: 1.5rem 1rem;
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+
+  .mode-modal-header h2 {
+    font-size: 1.3rem;
+  }
+
+  .mode-modal-header p {
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  .mode-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .mode-card {
+    padding: 1.25rem 1rem;
+  }
+
+  .mode-card-icon {
+    font-size: 2.6rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .mode-card h3 {
+    font-size: 1.15rem;
+  }
+
+  .btn-mode-select {
+    min-height: 54px;
+    font-size: 1rem;
+  }
+
+  /* Question Card & Question Text */
+  .question-card {
+    padding: 1rem;
+  }
+
+  .question-text-box {
+    font-size: 1.15rem;
+    line-height: 1.6;
+    min-height: 110px;
+  }
+
+  /* Solo Action Stage Buttons on Mobile */
+  .solo-action-container {
+    width: 100%;
+  }
+
+  .btn-solo-main {
+    min-height: 62px;
+    font-size: 1.2rem;
+    border-radius: 14px;
+  }
+
+  .solo-buzz-btn {
+    width: 100%;
+    min-height: 150px;
+  }
+
+  .buzz-inner .buzz-icon {
+    font-size: 3.2rem;
+  }
+
+  .buzz-inner .buzz-text {
+    font-size: 1.8rem;
+  }
+
+  .solo-choice-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .btn-solo-choice {
+    min-height: 58px;
+    font-size: 1.05rem;
+    border-radius: 14px;
+  }
+}
