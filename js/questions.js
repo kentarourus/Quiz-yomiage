@@ -87,17 +87,45 @@ class QuestionManager {
   }
 
   /**
-   * JAQKET (AIO 01) クイズデータセット (https://jaqket.s3.ap-northeast-1.amazonaws.com/data/aio_01/train_questions.json) から100問をランダム抽出
+   * JAQKET (AIO 01) クイズデータセット (https://jaqket.s3.ap-northeast-1.amazonaws.com/data/aio_01/train_questions.json) から100問を抽出
    */
   async fetchJaqketQuestions(count = 100) {
     if (!this.jaqketRawData) {
-      const url = "https://jaqket.s3.ap-northeast-1.amazonaws.com/data/aio_01/train_questions.json";
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const text = await res.text();
+      const targetUrl = "https://jaqket.s3.ap-northeast-1.amazonaws.com/data/aio_01/train_questions.json";
+      
+      const fetchMethods = [
+        async () => {
+          const res = await fetch(targetUrl, { cache: "no-store" });
+          if (res.ok) return await res.text();
+          return null;
+        },
+        async () => {
+          const proxyUrl = "https://proxy.cors.sh/" + targetUrl;
+          const res = await fetch(proxyUrl, { cache: "no-store" });
+          if (res.ok) return await res.text();
+          return null;
+        },
+        async () => {
+          const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(targetUrl);
+          const res = await fetch(proxyUrl, { cache: "no-store" });
+          if (res.ok) return await res.text();
+          return null;
+        }
+      ];
+
+      let text = null;
+      for (const fn of fetchMethods) {
+        try {
+          const t = await fn();
+          if (t && t.length > 1000) {
+            text = t;
+            break;
+          }
+        } catch(e) {}
+      }
+
+      if (text) {
         const lines = text.split("\n").filter(l => l.trim().length > 0);
-        
         const parsedItems = [];
         for (let i = 0; i < lines.length; i++) {
           try {
@@ -113,12 +141,16 @@ class QuestionManager {
             }
           } catch(e) {}
         }
-        this.jaqketRawData = parsedItems;
-        console.log(`✅ JAQKETデータセット (${parsedItems.length}問) をキャッシュ完了`);
-      } catch (e) {
-        console.error("Failed to fetch JAQKET dataset:", e);
-        this.loadAbcRandomQuestions(count);
-        return { success: false, count: this.questions.length, source: "offline_fallback" };
+        if (parsedItems.length > 0) {
+          this.jaqketRawData = parsedItems;
+          console.log(`✅ JAQKETデータセット (${parsedItems.length}問) をキャッシュ完了`);
+        }
+      }
+
+      // ネットワーク通信不可時はJAQKETサンプルバッファ(JAQKET_DATASET)から抽出
+      if (!this.jaqketRawData) {
+        console.warn("Using offline JAQKET dataset buffer fallback.");
+        return this.loadJaqketFallbackQuestions(count);
       }
     }
 
@@ -147,6 +179,39 @@ class QuestionManager {
     this.saveToStorage();
 
     return { success: true, count: sample.length, source: "JAQKET (AIO01)" };
+  }
+
+  /**
+   * JAQKETオフラインバッファ(300問)からランダム100問を抽出
+   */
+  loadJaqketFallbackQuestions(count = 100) {
+    if (typeof JAQKET_DATASET !== 'undefined' && Array.isArray(JAQKET_DATASET)) {
+      const sample = [];
+      const used = new Set();
+      const total = JAQKET_DATASET.length;
+      const numToPick = Math.min(count, total);
+
+      while (sample.length < numToPick && used.size < total) {
+        const idx = Math.floor(Math.random() * total);
+        if (!used.has(idx)) {
+          used.add(idx);
+          const item = JAQKET_DATASET[idx];
+          sample.push({
+            id: "jaqket_fb_" + idx + "_" + Date.now(),
+            q: item.q,
+            a: item.a,
+            genre: "JAQKET (AIO01)"
+          });
+        }
+      }
+
+      this.questions = sample;
+      this.currentIndex = 0;
+      this.saveToStorage();
+      return { success: true, count: sample.length, source: "JAQKET (AIO01)" };
+    }
+    this.loadAbcRandomQuestions(count);
+    return { success: true, count: this.questions.length, source: "ABC過去問" };
   }
 
   /**
