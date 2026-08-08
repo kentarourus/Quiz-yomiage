@@ -925,3 +925,265 @@ textarea:focus, input:focus, select:focus {
   gap: 0.4rem;
   margin-top: 0.4rem;
 }
+
+/* ==========================================
+   Mode Selection & Solo Mode Styles
+   ========================================== */
+
+/* Mode Switcher Bar in Stage */
+.mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(30, 41, 59, 0.75);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 1.2rem;
+  border-radius: 14px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mode-bar-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.mode-bar-buttons {
+  display: flex;
+  gap: 0.4rem;
+  background-color: rgba(15, 23, 42, 0.6);
+  padding: 0.25rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-color);
+}
+
+.mode-bar-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-bar-btn:hover {
+  color: var(--text-primary);
+}
+
+.mode-bar-btn.active {
+  background: linear-gradient(135deg, var(--primary-color), #0284c7);
+  color: #0f172a;
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+/* Mode Selection Modal Cards */
+.mode-modal-content {
+  max-width: 650px;
+  width: 90%;
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.mode-modal-header h2 {
+  font-size: 1.5rem;
+  margin-bottom: 0.3rem;
+  color: #fff;
+}
+
+.mode-modal-header p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.mode-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.25rem;
+}
+
+.mode-card {
+  background-color: rgba(15, 23, 42, 0.7);
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.mode-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary-color);
+  box-shadow: 0 10px 25px rgba(56, 189, 248, 0.15);
+}
+
+.mode-card.primary-mode:hover {
+  border-color: var(--accent-green);
+  box-shadow: 0 10px 25px var(--accent-green-glow);
+}
+
+.mode-card-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  background-color: rgba(56, 189, 248, 0.15);
+  color: var(--primary-color);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.mode-card-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.mode-card h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.mode-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+  flex-grow: 1;
+}
+
+.btn-mode-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+  border-radius: 10px;
+}
+
+/* Solo Mode Panel & Action Buttons */
+.solo-stage-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.solo-step-guide {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: rgba(30, 41, 59, 0.6);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 1.2rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+}
+
+.solo-step-badge {
+  background-color: var(--accent-purple);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
+
+.solo-action-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 550px;
+  gap: 1rem;
+}
+
+.btn-solo-main {
+  width: 100%;
+  padding: 1.2rem 2rem;
+  font-size: 1.3rem;
+  font-weight: 900;
+  border-radius: 16px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.btn-solo-play {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+.btn-solo-play:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px var(--accent-green-glow);
+}
+
+.btn-solo-next {
+  background: linear-gradient(135deg, #38bdf8, #0284c7);
+  color: #0f172a;
+}
+.btn-solo-next:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px var(--primary-glow);
+}
+
+/* Solo Choice Buttons (Pass vs Answer) */
+.solo-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+}
+
+.btn-solo-choice {
+  padding: 1.2rem 1rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.btn-pass {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+.btn-pass:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+}
+
+.btn-answer {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  color: #fff;
+}
+.btn-answer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+}
+
+.solo-next-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}

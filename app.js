@@ -1,9 +1,12 @@
 /**
  * アプリケーションメインコントローラー (app.js)
- * スマホ連携機能（BroadcastChannel / Storage Listener）対応版
+ * プレイモード設定（ひとりで / みんなで）＆ スマホ連携対応版
  */
 document.addEventListener("DOMContentLoaded", () => {
   // 状態変数
+  let currentMode = localStorage.getItem("quiz_yomiage_mode") || "solo";
+  let soloState = "idle"; // "idle" | "reading" | "buzzed" | "answer_shown"
+
   let isBuzzed = false;
   let timerInterval = null;
   let timerRemaining = 5;
@@ -25,7 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
     buzzChannel = new BroadcastChannel("quiz_buzz_channel");
     buzzChannel.onmessage = (event) => {
       if (event.data && event.data.type === "BUZZ_EVENT") {
-        triggerBuzz(event.data.playerName || "スマホプレイヤー");
+        if (currentMode === "solo") {
+          triggerSoloBuzzSolo();
+        } else {
+          triggerBuzz(event.data.playerName || "スマホプレイヤー");
+        }
       }
     };
   }
@@ -35,18 +42,32 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "quiz_latest_buzz" && e.newValue) {
       try {
         const data = JSON.parse(e.newValue);
-        triggerBuzz(data.playerName || "スマホプレイヤー");
+        if (currentMode === "solo") {
+          triggerSoloBuzzSolo();
+        } else {
+          triggerBuzz(data.playerName || "スマホプレイヤー");
+        }
       } catch (err) {}
     }
   });
 
   // DOM要素の参照取得
   const elements = {
-    // Header & Tabs
+    // Header & Mode Switcher
     tabBtns: document.querySelectorAll(".tab-btn"),
     tabContents: document.querySelectorAll(".tab-content"),
     btnHeaderAbc: document.getElementById("btn-header-abc"),
     totalCountBadge: document.getElementById("total-count-badge"),
+    btnOpenMode: document.getElementById("btn-open-mode"),
+    modeSelectModal: document.getElementById("mode-select-modal"),
+    btnChooseSolo: document.getElementById("btn-choose-solo"),
+    btnChooseMulti: document.getElementById("btn-choose-multi"),
+    tabModeSolo: document.getElementById("tab-mode-solo"),
+    tabModeMulti: document.getElementById("tab-mode-multi"),
+
+    // Stage Panels
+    soloStagePanel: document.getElementById("solo-stage-panel"),
+    multiStagePanel: document.getElementById("multi-stage-panel"),
 
     // Stage Info
     currentQNum: document.getElementById("current-q-num"),
@@ -66,18 +87,30 @@ document.addEventListener("DOMContentLoaded", () => {
     btnToggleAnswer: document.getElementById("btn-toggle-answer"),
     answerText: document.getElementById("answer-text"),
 
-    // Buzzer & Timer
+    // Solo Mode Elements
+    soloStepBadge: document.getElementById("solo-step-badge"),
+    soloStepText: document.getElementById("solo-step-text"),
+    btnSoloPlay: document.getElementById("btn-solo-play"),
+    btnSoloBuzz: document.getElementById("btn-solo-buzz"),
+    soloChoiceContainer: document.getElementById("solo-choice-container"),
+    btnSoloPass: document.getElementById("btn-solo-pass"),
+    btnSoloShowAnswer: document.getElementById("btn-solo-show-answer"),
+    soloNextContainer: document.getElementById("solo-next-container"),
+    btnSoloNext: document.getElementById("btn-solo-next"),
+    btnSoloReread: document.getElementById("btn-solo-reread"),
+
+    // Buzzer & Timer (Multiplayer)
     btnBuzz: document.getElementById("btn-buzz"),
     timerDisplay: document.getElementById("timer-display"),
     timerCount: document.getElementById("timer-count"),
     timerBarFill: document.getElementById("timer-bar-fill"),
 
-    // Judge Buttons
+    // Judge Buttons (Multiplayer)
     btnCorrect: document.getElementById("btn-correct"),
     btnIncorrect: document.getElementById("btn-incorrect"),
     btnThrough: document.getElementById("btn-through"),
 
-    // Playback Toolbar
+    // Playback Toolbar (Multiplayer)
     btnPlay: document.getElementById("btn-play"),
     btnPause: document.getElementById("btn-pause"),
     btnStop: document.getElementById("btn-stop"),
@@ -127,16 +160,56 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // 初期化関数
-  function init() {
+  async function init() {
     setupTabNavigation();
     setupSpeechCallbacks();
     setupEventListeners();
     setupKeyboardShortcuts();
 
     populateVoiceList();
-    renderCurrentQuestion();
-    renderQuestionBankTable();
+
+    // モード設定の反映
+    setMode(currentMode, false);
+
+    // 保存データが無い場合、http://qss.quiz-island.site/abcgo-gacha/ から自動取得
+    if (!questionManager.questions || questionManager.questions.length === 0) {
+      await refreshAbc100Questions(false);
+    } else {
+      renderCurrentQuestion();
+      renderQuestionBankTable();
+    }
+
     updateScoreDisplay();
+
+    // モード設定が保存されていない場合、選択モーダルを表示
+    if (!localStorage.getItem("quiz_yomiage_mode")) {
+      elements.modeSelectModal.classList.remove("hidden");
+    }
+  }
+
+  // ----------------------------------------------------
+  // モード切替制御 ("solo" | "multi")
+  // ----------------------------------------------------
+  function setMode(mode) {
+    currentMode = mode;
+    localStorage.setItem("quiz_yomiage_mode", mode);
+
+    if (mode === "solo") {
+      elements.tabModeSolo.classList.add("active");
+      elements.tabModeMulti.classList.remove("active");
+      elements.soloStagePanel.classList.remove("hidden");
+      elements.multiStagePanel.classList.add("hidden");
+      resetSoloState();
+    } else {
+      elements.tabModeSolo.classList.remove("active");
+      elements.tabModeMulti.classList.add("active");
+      elements.soloStagePanel.classList.add("hidden");
+      elements.multiStagePanel.classList.remove("hidden");
+      renderCurrentQuestion();
+    }
+
+    speechEngine.stop();
+    stopTimer();
   }
 
   // ----------------------------------------------------
@@ -181,6 +254,11 @@ document.addEventListener("DOMContentLoaded", () => {
         elements.speechStatus.className = "status-indicator ready";
         elements.btnPlay.textContent = "▶️ 読み上げ開始 (Space)";
         renderFullQuestionText();
+
+        if (currentMode === "solo" && soloState === "reading") {
+          soloState = "buzzed";
+          updateSoloUI();
+        }
       }
     };
 
@@ -191,6 +269,107 @@ document.addEventListener("DOMContentLoaded", () => {
         elements.btnPlay.textContent = "▶️ 読み上げ開始 (Space)";
       }
     };
+  }
+
+  // ----------------------------------------------------
+  // Solo モードの状態制御
+  // ----------------------------------------------------
+  function resetSoloState() {
+    soloState = "idle";
+    isBuzzed = false;
+    currentBuzzIndex = -1;
+    speechEngine.stop();
+    elements.buzzMarkerInfo.classList.add("hidden");
+    elements.answerText.classList.add("hidden");
+    elements.btnToggleAnswer.textContent = "👁️ 正解を表示 (Enter)";
+    updateSoloUI();
+  }
+
+  function updateSoloUI() {
+    elements.btnSoloPlay.classList.add("hidden");
+    elements.btnSoloBuzz.classList.add("hidden");
+    elements.soloChoiceContainer.classList.add("hidden");
+    elements.soloNextContainer.classList.add("hidden");
+
+    if (soloState === "idle") {
+      elements.soloStepBadge.textContent = "1. 再生待機";
+      elements.soloStepText.textContent = "「読み上げ開始」ボタンを押して音声を再生してください";
+      elements.btnSoloPlay.classList.remove("hidden");
+      elements.speechStatus.textContent = "待機中";
+      elements.speechStatus.className = "status-indicator ready";
+    } else if (soloState === "reading") {
+      elements.soloStepBadge.textContent = "2. 音声再生中";
+      elements.soloStepText.textContent = "🔊 音声読み上げ中... タイミングよく「早押し！」ボタンを押してください";
+      elements.btnSoloBuzz.classList.remove("hidden");
+      elements.speechStatus.textContent = "読み上げ中...";
+      elements.speechStatus.className = "status-indicator playing";
+    } else if (soloState === "buzzed") {
+      elements.soloStepBadge.textContent = "3. 早押し後";
+      elements.soloStepText.textContent = "⚡ 早押し！ 「パス (最初から読み直す)」 または 「回答を表示」 を選択してください";
+      elements.soloChoiceContainer.classList.remove("hidden");
+      elements.speechStatus.textContent = "⚡ 早押し停止中";
+      elements.speechStatus.className = "status-indicator buzzed";
+    } else if (soloState === "answer_shown") {
+      elements.soloStepBadge.textContent = "4. 解答表示中";
+      elements.soloStepText.textContent = "正解を表示しました。「次の問題へ」を押すと次の問題に進みます";
+      elements.soloNextContainer.classList.remove("hidden");
+      elements.answerText.classList.remove("hidden");
+      elements.btnToggleAnswer.textContent = "🙈 正解を隠す (Enter)";
+      elements.speechStatus.textContent = "解答表示中";
+      elements.speechStatus.className = "status-indicator ready";
+    }
+  }
+
+  function startSoloReading() {
+    soundEngine.init();
+    const qData = questionManager.getCurrentQuestion();
+    if (!qData) return;
+
+    resetSoloState();
+    soloState = "reading";
+    updateSoloUI();
+    speechEngine.speak(qData.q);
+  }
+
+  function triggerSoloBuzzSolo() {
+    if (soloState !== "reading") return;
+
+    soundEngine.init();
+    soundEngine.playBuzz();
+
+    if (speechEngine.isPlaying) {
+      currentBuzzIndex = speechEngine.buzzStop();
+    } else {
+      currentBuzzIndex = speechEngine.currentCharIndex || 0;
+    }
+
+    isBuzzed = true;
+    renderBuzzedQuestionText(currentBuzzIndex, "あなた");
+
+    soloState = "buzzed";
+    updateSoloUI();
+  }
+
+  function handleSoloPass() {
+    // パスが選ばれたら最初から読み直す
+    elements.buzzMarkerInfo.classList.add("hidden");
+    const qData = questionManager.getCurrentQuestion();
+    if (qData) {
+      renderFullQuestionText();
+    }
+    startSoloReading();
+  }
+
+  function handleSoloShowAnswer() {
+    soundEngine.playCorrect();
+    soloState = "answer_shown";
+    updateSoloUI();
+  }
+
+  function handleSoloNext() {
+    questionManager.nextQuestion();
+    renderCurrentQuestion();
+    resetSoloState();
   }
 
   // ----------------------------------------------------
@@ -235,6 +414,10 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.speechStatus.textContent = "待機中";
     elements.speechStatus.className = "status-indicator ready";
     elements.btnPlay.textContent = "▶️ 読み上げ開始 (Space)";
+
+    if (currentMode === "solo") {
+      resetSoloState();
+    }
   }
 
   function updateDropdownList() {
@@ -287,7 +470,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------
-  // 早押し (BUZZ) ロジック
+  // 早押し (BUZZ) ロジック (みんなでモード用)
   // ----------------------------------------------------
   function triggerBuzz(playerName = "ホスト") {
     if (isBuzzed) return; // 重複防止
@@ -330,7 +513,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------
-  // タイマー制御
+  // タイマー制御 (みんなでモード用)
   // ----------------------------------------------------
   function startTimer() {
     stopTimer();
@@ -412,14 +595,48 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------
-  // ABC過去問ランダム100問の再取得
+  // ABCガチャ (http://qss.quiz-island.site/abcgo-gacha/) から100問のリアルタイム取得
   // ----------------------------------------------------
-  function refreshAbc100Questions() {
-    if (confirm("ABC過去問からランダムに100問を新しくセットしますか？（現在の問題リストは置き換わります）")) {
-      questionManager.loadAbcRandomQuestions(100);
+  async function refreshAbc100Questions(showConfirm = true) {
+    if (showConfirm && !confirm("http://qss.quiz-island.site/abcgo-gacha/ から100問を新しく取得しますか？\n（現在の問題リストは置き換わります）")) {
+      return;
+    }
+
+    const abcBtns = [elements.btnHeaderAbc, elements.btnStageAbc, elements.btnBankAbc];
+    abcBtns.forEach(btn => {
+      if (btn) {
+        btn.disabled = true;
+        btn.dataset.originalText = btn.textContent;
+        btn.textContent = "⏳ ガチャ取得中...";
+      }
+    });
+
+    try {
+      const res = await questionManager.fetchAbcQuestionsFromGacha();
       renderCurrentQuestion();
       renderQuestionBankTable();
-      alert("ABC過去問100問をセットしました！");
+
+      if (showConfirm) {
+        if (res && res.success) {
+          alert(`http://qss.quiz-island.site/abcgo-gacha/ から100問を取得しました！`);
+        } else {
+          alert(`オンライン取得に失敗したため、オフライン用の過去問データ(100問)をセットしました。`);
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching gacha questions:", e);
+      if (showConfirm) {
+        alert("問題の取得中にエラーが発生しました。");
+      }
+    } finally {
+      abcBtns.forEach(btn => {
+        if (btn) {
+          btn.disabled = false;
+          if (btn.dataset.originalText) {
+            btn.textContent = btn.dataset.originalText;
+          }
+        }
+      });
     }
   }
 
@@ -427,9 +644,36 @@ document.addEventListener("DOMContentLoaded", () => {
   // イベントリスナー設定
   // ----------------------------------------------------
   function setupEventListeners() {
-    elements.btnHeaderAbc.addEventListener("click", refreshAbc100Questions);
-    elements.btnStageAbc.addEventListener("click", refreshAbc100Questions);
-    elements.btnBankAbc.addEventListener("click", refreshAbc100Questions);
+    // モード切替イベント
+    elements.btnOpenMode.addEventListener("click", () => {
+      elements.modeSelectModal.classList.remove("hidden");
+    });
+
+    elements.btnChooseSolo.addEventListener("click", () => {
+      setMode("solo");
+      elements.modeSelectModal.classList.add("hidden");
+    });
+
+    elements.btnChooseMulti.addEventListener("click", () => {
+      setMode("multi");
+      elements.modeSelectModal.classList.add("hidden");
+    });
+
+    elements.tabModeSolo.addEventListener("click", () => setMode("solo"));
+    elements.tabModeMulti.addEventListener("click", () => setMode("multi"));
+
+    // Solo モード専用ボタンイベント
+    elements.btnSoloPlay.addEventListener("click", startSoloReading);
+    elements.btnSoloBuzz.addEventListener("click", triggerSoloBuzzSolo);
+    elements.btnSoloPass.addEventListener("click", handleSoloPass);
+    elements.btnSoloShowAnswer.addEventListener("click", handleSoloShowAnswer);
+    elements.btnSoloNext.addEventListener("click", handleSoloNext);
+    elements.btnSoloReread.addEventListener("click", handleSoloPass);
+
+    // ガチャ・共通ボタンイベント
+    elements.btnHeaderAbc.addEventListener("click", () => refreshAbc100Questions(true));
+    elements.btnStageAbc.addEventListener("click", () => refreshAbc100Questions(true));
+    elements.btnBankAbc.addEventListener("click", () => refreshAbc100Questions(true));
 
     elements.qSelectDropdown.addEventListener("change", (e) => {
       questionManager.setQuestionIndex(parseInt(e.target.value));
@@ -446,6 +690,7 @@ document.addEventListener("DOMContentLoaded", () => {
       renderCurrentQuestion();
     });
 
+    // みんなでモード用イベント
     elements.btnBuzz.addEventListener("click", () => triggerBuzz("ホスト"));
 
     elements.btnPlay.addEventListener("click", () => {
@@ -604,6 +849,39 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // ---------------- Solo モード用ショートカット ----------------
+      if (currentMode === "solo") {
+        if (e.code === "Space") {
+          e.preventDefault();
+          if (soloState === "idle") {
+            startSoloReading();
+          } else if (soloState === "reading") {
+            triggerSoloBuzzSolo();
+          } else if (soloState === "answer_shown") {
+            handleSoloNext();
+          }
+        } else if (e.code === "Enter") {
+          e.preventDefault();
+          if (soloState === "idle") {
+            startSoloReading();
+          } else if (soloState === "buzzed") {
+            handleSoloShowAnswer();
+          } else if (soloState === "answer_shown") {
+            handleSoloNext();
+          }
+        } else if (e.code === "KeyP" || e.code === "Digit1" || e.code === "Numpad1") {
+          if (soloState === "buzzed") {
+            handleSoloPass();
+          }
+        } else if (e.code === "KeyA" || e.code === "Digit2" || e.code === "Numpad2") {
+          if (soloState === "buzzed") {
+            handleSoloShowAnswer();
+          }
+        }
+        return;
+      }
+
+      // ---------------- みんなでモード用ショートカット ----------------
       if (e.code === "Space") {
         e.preventDefault();
         soundEngine.init();
