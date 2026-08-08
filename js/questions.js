@@ -92,8 +92,8 @@ class QuestionManager {
   async fastParallelFetch(targetUrl) {
     const createFetchTask = (url, isJson = false) => async () => {
       const controller = new AbortController();
-      // 600ms で超高速タイムアウト
-      const timer = setTimeout(() => controller.abort(), 600);
+      // ABCガチャライブ取得用に3500msの十分なタイムアウトを確保
+      const timer = setTimeout(() => controller.abort(), 3500);
       try {
         const res = await fetch(url, { redirect: "follow", cache: "no-store", signal: controller.signal });
         clearTimeout(timer);

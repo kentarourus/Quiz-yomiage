@@ -71,12 +71,8 @@ document.addEventListener("DOMContentLoaded", () => {
       elements.selectTextMode.value = textDisplayMode;
     }
 
-    // 問題データが無い場合、http://qss.quiz-island.site/abcgo-gacha/ から自動取得
-    if (!questionManager.questions || questionManager.questions.length === 0) {
-      await refreshAbc100Questions(false);
-    } else {
-      renderCurrentQuestion();
-    }
+    // 起動時も必ず http://qss.quiz-island.site/abcgo-gacha/ からライブ100問を取得
+    await refreshAbc100Questions(false);
   }
 
   // ----------------------------------------------------
