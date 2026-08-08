@@ -1,6 +1,6 @@
 /**
  * Web Speech API (SpeechSynthesis) を制御する読み上げエンジン
- * ブラウザのonboundary不具合をカバーするハイブリッド文字トラッキングエンジン搭載
+ * ブラウザのフリーズ防止・即時起動保証・ハイブリッド文字トラッキング機能搭載
  */
 class SpeechEngine {
   constructor() {
@@ -18,6 +18,7 @@ class SpeechEngine {
     this.currentUtterance = null;
     this.timer = null;
     this.startTime = 0;
+    this.startWatchdog = null;
 
     // イベントコールバック
     this.onStart = null;
@@ -29,7 +30,8 @@ class SpeechEngine {
   }
 
   initVoices() {
-    if (!this.synth) return;
+    if (!window.speechSynthesis) return;
+    this.synth = window.speechSynthesis;
     
     const updateVoices = () => {
       this.voices = this.synth.getVoices();
@@ -64,6 +66,7 @@ class SpeechEngine {
   }
 
   getJapaneseVoices() {
+    if (!this.synth) this.synth = window.speechSynthesis;
     if (!this.synth) return [];
     return this.voices.filter(v => v.lang.includes('ja') || v.lang.includes('JA'));
   }
@@ -84,15 +87,35 @@ class SpeechEngine {
   }
 
   /**
-   * テキストの読み上げを開始 (ハイブリッドリアルタイム文字トラッキング)
+   * ブラウザの音声合成エンジンが一時停止・凍結している場合の自動解除処理
+   */
+  unlock() {
+    if (!this.synth) this.synth = window.speechSynthesis;
+    if (this.synth) {
+      if (this.synth.paused) {
+        this.synth.resume();
+      }
+      this.synth.cancel();
+    }
+  }
+
+  /**
+   * テキストの読み上げを開始 (フリーズ防止ウォッチドッグ＆ハイブリッドリアルタイム文字トラッキング)
    * @param {string} text 読み上げる問題文
    */
   speak(text) {
     this.stop(); // 既存の読み上げ・タイマーを停止
 
+    if (!this.synth) this.synth = window.speechSynthesis;
     if (!this.synth) {
       console.warn("Speech Synthesis is not supported in this browser.");
       return;
+    }
+
+    // ブラウザの音声エンジンキューを確実にリセット＆解凍
+    this.synth.cancel();
+    if (this.synth.paused) {
+      this.synth.resume();
     }
 
     this.currentText = text;
@@ -112,11 +135,15 @@ class SpeechEngine {
     utterance.volume = this.volume;
 
     // 日本語1文字あたりのミリ秒推定値 (速度設定 rate を自動反映)
-    // 1.0x 時でおよそ165ms/文字
     const msPerChar = Math.max(50, Math.round(165 / (this.rate || 1.0)));
 
-    // 開始イベント
-    utterance.onstart = () => {
+    let hasStarted = false;
+
+    const startReadingProcess = () => {
+      if (hasStarted) return;
+      hasStarted = true;
+      clearTimeout(this.startWatchdog);
+
       this.isPlaying = true;
       this.startTime = Date.now();
       if (this.onStart) this.onStart();
@@ -124,7 +151,7 @@ class SpeechEngine {
       // 初回1文字目を即時反映
       if (this.onBoundary) this.onBoundary(0, 1);
 
-      // 高精度文字タイマーを開始 (ブラウザのonboundary非対応対策)
+      // 高精度文字タイマーを開始
       clearInterval(this.timer);
       this.timer = setInterval(() => {
         if (!this.isPlaying) {
@@ -143,8 +170,16 @@ class SpeechEngine {
       }, 40);
     };
 
-    // 境界位置イベント（ブラウザがonboundaryに対応している場合は位置補正）
+    // 開始イベント
+    utterance.onstart = () => {
+      startReadingProcess();
+    };
+
+    // 境界位置イベント
     utterance.onboundary = (event) => {
+      if (!hasStarted) {
+        startReadingProcess();
+      }
       if (typeof event.charIndex === 'number' && event.charIndex > 0) {
         this.currentCharIndex = event.charIndex;
         this.startTime = Date.now() - (this.currentCharIndex * msPerChar);
@@ -156,6 +191,7 @@ class SpeechEngine {
 
     // 終了イベント
     utterance.onend = () => {
+      clearTimeout(this.startWatchdog);
       clearInterval(this.timer);
       if (this.isPlaying) {
         this.isPlaying = false;
@@ -167,18 +203,29 @@ class SpeechEngine {
 
     utterance.onerror = (e) => {
       console.error("SpeechSynthesis error:", e);
+      clearTimeout(this.startWatchdog);
       clearInterval(this.timer);
       this.isPlaying = false;
       if (this.onEnd) this.onEnd();
     };
 
+    // 音声再生命令
     this.synth.speak(utterance);
+
+    // ウォッチドッグタイマー (Chrome/Safari等でonstartが100ms遅延・無視された場合の保護起動)
+    this.startWatchdog = setTimeout(() => {
+      if (!hasStarted && this.isPlaying) {
+        console.log("⚡ Speech startWatchdog triggered: forcing reading start.");
+        startReadingProcess();
+      }
+    }, 100);
   }
 
   /**
    * 早押し時：即座に読み上げとタイマーを停止し、現在の文字位置を返す
    */
   buzzStop() {
+    clearTimeout(this.startWatchdog);
     clearInterval(this.timer);
     const buzzIndex = this.currentCharIndex;
     this.stop();
@@ -189,8 +236,12 @@ class SpeechEngine {
    * 完全に停止
    */
   stop() {
+    clearTimeout(this.startWatchdog);
     clearInterval(this.timer);
     if (this.synth) {
+      if (this.synth.paused) {
+        this.synth.resume();
+      }
       this.synth.cancel();
     }
     this.isPlaying = false;

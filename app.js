@@ -178,6 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // アクションハンドラー
   // ----------------------------------------------------
   function startSoloReading() {
+    speechEngine.unlock();
     soundEngine.init();
     const qData = questionManager.getCurrentQuestion();
     if (!qData) return;
