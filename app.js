@@ -10,10 +10,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 表示モード ("realtime" | "hidden" | "visible")
   let textDisplayMode = localStorage.getItem("quiz_yomiage_text_mode") || "realtime";
+  
+  // 問題データソース ("gacha" | "jaqket" | "abc_dataset")
+  let questionSource = localStorage.getItem("quiz_yomiage_q_source") || "gacha";
 
   // DOM要素の参照取得
   const elements = {
     // Header & Actions
+    selectQSource: document.getElementById("select-q-source"),
     btnRefreshGacha: document.getElementById("btn-refresh-gacha"),
     btnToggleSettings: document.getElementById("btn-toggle-settings"),
     settingsModal: document.getElementById("settings-modal"),
@@ -49,6 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnReread: document.getElementById("btn-reread"),
 
     // Settings Controls
+    selectQSourceModal: document.getElementById("select-q-source-modal"),
     selectTextMode: document.getElementById("select-text-mode"),
     selectVoice: document.getElementById("select-voice"),
     rangeRate: document.getElementById("range-rate"),
@@ -66,13 +71,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     populateVoiceList();
 
-    // 表示モードドロップダウンの初期選択
+    // 表示モード & データソース ドロップダウンの初期化
     if (elements.selectTextMode) {
       elements.selectTextMode.value = textDisplayMode;
     }
+    if (elements.selectQSource) {
+      elements.selectQSource.value = questionSource;
+    }
+    if (elements.selectQSourceModal) {
+      elements.selectQSourceModal.value = questionSource;
+    }
 
-    // 起動時も必ず http://qss.quiz-island.site/abcgo-gacha/ からライブ100問を取得
-    await refreshAbc100Questions(false);
+    // 起動時に選択されたデータソースから100問を取得
+    await refreshQuestionsBySource(false);
   }
 
   // ----------------------------------------------------
@@ -327,40 +338,49 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------
-  // ABCガチャ (http://qss.quiz-island.site/abcgo-gacha/) からの爆速取得
+  // 問題データ取得 (ソース選択対応: ABCガチャ / JAQKET / ABC過去問)
   // ----------------------------------------------------
-  async function refreshAbc100Questions(showConfirm = true) {
-    if (showConfirm && !confirm("http://qss.quiz-island.site/abcgo-gacha/ から100問を新しく取得しますか？\n（現在の問題リストは置き換わります）")) {
+  async function refreshQuestionsBySource(showConfirm = true) {
+    if (showConfirm && !confirm("選択したデータソースから100問を新しく取得しますか？\n（現在の問題リストは置き換わります）")) {
       return;
     }
 
     const btn = elements.btnRefreshGacha;
     if (btn) {
       btn.disabled = true;
-      btn.textContent = "⏳ 爆速取得中...";
+      btn.textContent = "⏳ 取得中...";
     }
 
     try {
-      const res = await questionManager.fetchAbcQuestionsFromGacha();
+      let res = null;
+      if (questionSource === "jaqket") {
+        elements.questionTextBox.innerHTML = '<span class="placeholder-text">⏳ JAQKETデータセット(1.3万問)から抽出中...</span>';
+        res = await questionManager.fetchJaqketQuestions(100);
+      } else if (questionSource === "gacha") {
+        elements.questionTextBox.innerHTML = '<span class="placeholder-text">⏳ http://qss.quiz-island.site/abcgo-gacha/ から100問を取得中...</span>';
+        res = await questionManager.fetchAbcQuestionsFromGacha();
+      } else {
+        questionManager.loadAbcRandomQuestions(100);
+        res = { success: true, source: "ABC過去問 (100問)" };
+      }
+
       renderCurrentQuestion();
 
       if (showConfirm) {
         if (res && res.success) {
-          const modeMsg = res.instant ? "⚡ 0秒で即時更新しました！" : "http://qss.quiz-island.site/abcgo-gacha/ から100問を取得しました！";
-          alert(modeMsg);
-        } else {
-          alert(`オンライン取得に失敗したため、オフライン用の過去問データ(100問)をセットしました。`);
+          const srcName = questionSource === "jaqket" ? "JAQKETデータセット(1.3万問)" : questionSource === "gacha" ? "ABCガチャ" : "ABC過去問";
+          alert(`「${srcName}」から100問をセットしました！`);
         }
       }
     } catch (e) {
-      console.error("Error fetching gacha questions:", e);
+      console.error("Error refreshing questions:", e);
       if (showConfirm) {
         alert("問題の取得中にエラーが発生しました。");
       }
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = "🎲 ガチャ100問更新";
+        btn.textContent = "問題取得";
       }
     }
   }
@@ -369,7 +389,18 @@ document.addEventListener("DOMContentLoaded", () => {
   // イベントリスナー設定
   // ----------------------------------------------------
   function setupEventListeners() {
-    elements.btnRefreshGacha.addEventListener("click", () => refreshAbc100Questions(true));
+    elements.btnRefreshGacha.addEventListener("click", () => refreshQuestionsBySource(true));
+
+    const handleSourceChange = (e) => {
+      questionSource = e.target.value;
+      localStorage.setItem("quiz_yomiage_q_source", questionSource);
+      if (elements.selectQSource) elements.selectQSource.value = questionSource;
+      if (elements.selectQSourceModal) elements.selectQSourceModal.value = questionSource;
+      refreshQuestionsBySource(false);
+    };
+
+    if (elements.selectQSource) elements.selectQSource.addEventListener("change", handleSourceChange);
+    if (elements.selectQSourceModal) elements.selectQSourceModal.addEventListener("change", handleSourceChange);
 
     elements.btnToggleSettings.addEventListener("click", () => {
       elements.settingsModal.classList.remove("hidden");

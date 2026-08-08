@@ -20,7 +20,12 @@
         <h1 class="app-title">早押しクイズ</h1>
       </div>
       <div class="header-actions">
-        <button id="btn-refresh-gacha" class="btn btn-gacha" title="100問を取得">
+        <select id="select-q-source" class="select-source-hdr" title="問題の取得元を選択">
+          <option value="gacha" selected>🎲 ABCガチャ</option>
+          <option value="jaqket">📚 JAQKET (1.3万問)</option>
+          <option value="abc_dataset">⚡ ABC過去問</option>
+        </select>
+        <button id="btn-refresh-gacha" class="btn btn-gacha" title="選択したソースから100問を取得">
           問題取得
         </button>
         <button id="btn-toggle-settings" class="btn btn-circle-settings" title="設定を開く">
@@ -132,6 +137,15 @@
           <button id="btn-close-settings" class="btn-close">✕</button>
         </div>
         <div class="settings-body">
+          <div class="form-group">
+            <label>📚 問題の取得元 (データソース):</label>
+            <select id="select-q-source-modal" class="select-full">
+              <option value="gacha" selected>🎲 ABCガチャ (qss.quiz-island.site 100問)</option>
+              <option value="jaqket">📚 JAQKET クイズデータセット (AIO 01 / 1.3万問)</option>
+              <option value="abc_dataset">⚡ ABC過去問 (ローカル100問)</option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label>👁️ 問題文の表示モード:</label>
             <select id="select-text-mode" class="select-full">

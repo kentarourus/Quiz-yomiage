@@ -8,6 +8,7 @@ class QuestionManager {
     this.storageKey = "quiz_yomiage_questions_v1";
     this.preloadedBatch = null;
     this.isPreloading = false;
+    this.jaqketRawData = null;
     this.loadFromStorage();
 
     // バックグラウンドで次の100問を事前ロード開始
@@ -83,6 +84,69 @@ class QuestionManager {
     console.log("⚡ ネットワーク遅延・遮断検知: ローカルABC過去問100問を0ms即時ロード");
     this.loadAbcRandomQuestions(100);
     return { success: true, count: this.questions.length, source: "abc_dataset_instant", instant: true };
+  }
+
+  /**
+   * JAQKET (AIO 01) クイズデータセット (https://jaqket.s3.ap-northeast-1.amazonaws.com/data/aio_01/train_questions.json) から100問をランダム抽出
+   */
+  async fetchJaqketQuestions(count = 100) {
+    if (!this.jaqketRawData) {
+      const url = "https://jaqket.s3.ap-northeast-1.amazonaws.com/data/aio_01/train_questions.json";
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const text = await res.text();
+        const lines = text.split("\n").filter(l => l.trim().length > 0);
+        
+        const parsedItems = [];
+        for (let i = 0; i < lines.length; i++) {
+          try {
+            const item = JSON.parse(lines[i]);
+            const qText = item.original_question || item.question;
+            const aText = item.original_answer || item.answer_entity;
+            if (qText && aText) {
+              parsedItems.push({
+                qid: item.qid || `jaq_${i}`,
+                q: qText.trim(),
+                a: aText.trim()
+              });
+            }
+          } catch(e) {}
+        }
+        this.jaqketRawData = parsedItems;
+        console.log(`✅ JAQKETデータセット (${parsedItems.length}問) をキャッシュ完了`);
+      } catch (e) {
+        console.error("Failed to fetch JAQKET dataset:", e);
+        this.loadAbcRandomQuestions(count);
+        return { success: false, count: this.questions.length, source: "offline_fallback" };
+      }
+    }
+
+    // キャッシュされた1.3万問からランダムに指定数を抽出
+    const sample = [];
+    const used = new Set();
+    const totalAvailable = this.jaqketRawData.length;
+    const numToPick = Math.min(count, totalAvailable);
+
+    while (sample.length < numToPick && used.size < totalAvailable) {
+      const idx = Math.floor(Math.random() * totalAvailable);
+      if (!used.has(idx)) {
+        used.add(idx);
+        const item = this.jaqketRawData[idx];
+        sample.push({
+          id: "jaqket_" + item.qid + "_" + Date.now(),
+          q: item.q,
+          a: item.a,
+          genre: "JAQKET (AIO01)"
+        });
+      }
+    }
+
+    this.questions = sample;
+    this.currentIndex = 0;
+    this.saveToStorage();
+
+    return { success: true, count: sample.length, source: "JAQKET (AIO01)" };
   }
 
   /**
