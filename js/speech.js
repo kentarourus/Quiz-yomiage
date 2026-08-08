@@ -31,11 +31,25 @@ class SpeechEngine {
     
     const updateVoices = () => {
       this.voices = this.synth.getVoices();
-      // 日本語の音声を優先選択
       const jaVoices = this.voices.filter(v => v.lang.includes('ja') || v.lang.includes('JA'));
+      
       if (jaVoices.length > 0) {
-        // Kyoko, Haruka, Ichiro, Google 日本語 などを自動選択
-        this.selectedVoice = jaVoices[0];
+        // 早押しクイズに最適な高音質・聞き取りやすいボイスを自動優先選択
+        const priorityNames = [
+          "Google 日本語", "Google ja-JP", 
+          "Microsoft Nanami Online", "Microsoft Keita Online", "Microsoft Ayumi", 
+          "Kyoko", "Otoya", "Hattori", "Haruka", "Ichiro"
+        ];
+
+        let bestVoice = null;
+        for (const name of priorityNames) {
+          const match = jaVoices.find(v => v.name.includes(name));
+          if (match) {
+            bestVoice = match;
+            break;
+          }
+        }
+        this.selectedVoice = bestVoice || jaVoices[0];
       } else if (this.voices.length > 0) {
         this.selectedVoice = this.voices[0];
       }

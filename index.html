@@ -3,389 +3,157 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>早押しクイズ 自動読み上げ＆判定アプリ</title>
+  <title>ABC早押しクイズ 自動読み上げアプリ</title>
   <!-- Google Fonts: Noto Sans JP, Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800;900&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800;900&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
+    
     <!-- Header -->
     <header class="app-header">
       <div class="logo-area">
         <span class="logo-icon">⚡</span>
-        <h1 class="app-title">早押しクイズ <span>自動読み上げ</span></h1>
+        <h1 class="app-title">ABC早押し <span>読み上げ</span></h1>
       </div>
-      <nav class="nav-tabs">
-        <button class="tab-btn active" data-tab="stage-tab">🎯 クイズステージ</button>
-        <button class="tab-btn" data-tab="bank-tab">📚 問題バンク (<span id="total-count-badge">0</span>)</button>
-        <button class="tab-btn" data-tab="settings-tab">⚙️ 設定・スコア</button>
-      </nav>
       <div class="header-actions">
-        <button id="btn-open-mode" class="btn btn-secondary" title="プレイモードを選択（ひとりで / みんなで）">
-          🎮 モード切替
+        <button id="btn-refresh-gacha" class="btn btn-gacha" title="http://qss.quiz-island.site/abcgo-gacha/ から新しく100問を取得">
+          🎲 ガチャ100問更新
         </button>
-        <a href="player.html" target="_blank" class="btn btn-mobile-link" title="スマホ用の早押しボタン画面を開きます">
-          📱 スマホ早押し画面を開く
-        </a>
-        <button id="btn-header-abc" class="btn btn-abc-header" title="http://qss.quiz-island.site/abcgo-gacha/ から新しく100問を取得">
-          🎲 ガチャから100問を取得
+        <button id="btn-toggle-settings" class="btn btn-icon" title="音声設定を開く">
+          ⚙️
         </button>
       </div>
     </header>
 
-    <!-- Main Content Tabs -->
+    <!-- Main Content -->
     <main class="app-main">
-      
-      <!-- ================= TAB 1: QUIZ STAGE ================= -->
-      <section id="stage-tab" class="tab-content active">
-        <!-- Top Mode Switcher Bar -->
-        <div class="mode-bar">
-          <span class="mode-bar-label">現在のプレイモード:</span>
-          <div class="mode-bar-buttons">
-            <button id="tab-mode-solo" class="mode-bar-btn active">👤 ひとりで (一人練習)</button>
-            <button id="tab-mode-multi" class="mode-bar-btn">👥 みんなで (対戦・ホスト)</button>
+      <div class="quiz-container">
+
+        <!-- Info & Navigation Bar -->
+        <div class="info-bar">
+          <div class="q-progress">
+            <span class="q-label">問題</span>
+            <span id="current-q-num" class="q-num">1</span>
+            <span class="q-total">/ <span id="max-q-num">100</span></span>
+          </div>
+          <div id="q-genre-tag" class="genre-badge">ABC過去問</div>
+          <div class="nav-controls">
+            <button id="btn-prev-q" class="btn btn-sm">⏮ 前へ</button>
+            <select id="q-select-dropdown" class="select-sm"></select>
+            <button id="btn-next-q" class="btn btn-sm">次へ ⏭</button>
           </div>
         </div>
 
-        <div class="stage-grid">
+        <!-- Question Text Card -->
+        <div class="question-card">
+          <div class="card-header">
+            <span class="card-title">【問題文】</span>
+            <span id="speech-status" class="status-indicator ready">待機中</span>
+          </div>
           
-          <!-- Top Info Bar -->
-          <div class="stage-info-bar">
-            <div class="q-progress">
-              <span class="q-label">問題</span>
-              <span id="current-q-num" class="q-num">1</span>
-              <span class="q-total">/ <span id="max-q-num">100</span></span>
-            </div>
-            <div id="q-genre-tag" class="genre-tag">ABC過去問</div>
-            <div class="stage-quick-controls">
-              <button id="btn-prev-q" class="btn btn-sm">⏮ 前へ</button>
-              <select id="q-select-dropdown" class="select-sm"></select>
-              <button id="btn-next-q" class="btn btn-sm">次へ ⏭</button>
-            </div>
+          <div id="question-text-box" class="question-text-box">
+            <span class="placeholder-text">「読み上げ開始」を押すか、Spaceキーでスタート</span>
           </div>
 
-          <!-- Question Card Display -->
-          <div class="question-card">
-            <div class="question-header">
-              <span class="card-title">【問題文】</span>
-              <span id="speech-status" class="status-indicator ready">待機中</span>
-            </div>
-            
-            <div id="question-text-box" class="question-text-box">
-              <span class="placeholder-text">「読み上げ開始」またはSpaceキーを押してください</span>
-            </div>
+          <!-- Buzz Position Marker -->
+          <div id="buzz-marker-info" class="buzz-marker-info hidden">
+            <span class="buzz-badge">⚡ 早押し発生</span>
+            <span id="buzz-position-text"></span>
+          </div>
 
-            <!-- Buzz Marker & Player Info -->
-            <div id="buzz-marker-info" class="buzz-marker-info hidden">
-              <span class="buzz-badge">⚡ 早押し発生</span>
-              <span id="buzz-position-text"></span>
-            </div>
+          <!-- Answer Box -->
+          <div id="answer-box" class="answer-box hidden">
+            <span class="answer-label">【正解】</span>
+            <span id="answer-text" class="answer-text">----</span>
+          </div>
+        </div>
 
-            <!-- Answer Box (Hidden/Shown) -->
-            <div class="answer-box">
-              <div class="answer-header">
-                <span class="answer-title">【正解】</span>
-                <button id="btn-toggle-answer" class="btn btn-answer-toggle">👁️ 正解を表示 (Enter)</button>
+        <!-- Solo Stage Action Buttons Area -->
+        <div class="action-stage">
+          <div id="step-guide" class="step-guide">
+            <span id="step-badge" class="step-badge">STEP 1</span>
+            <span id="step-text">「読み上げ開始」を押して音声を再生してください</span>
+          </div>
+
+          <div class="buttons-container">
+            <!-- 1. Idle State: Play Button -->
+            <button id="btn-play" class="btn btn-main btn-play">
+              ▶️ 読み上げ開始 (Space)
+            </button>
+
+            <!-- 2. Reading State: Giant Buzzer Button -->
+            <button id="btn-buzz" class="giant-buzz-btn hidden">
+              <div class="buzz-inner">
+                <span class="buzz-icon">🔴</span>
+                <span class="buzz-text">早押し！</span>
+                <span class="buzz-sub">[ SPACE / タップ ]</span>
               </div>
-              <div id="answer-text" class="answer-text hidden">----</div>
-            </div>
-          </div>
+            </button>
 
-          <!-- ================= SOLO MODE STAGE ================= -->
-          <div id="solo-stage-panel" class="solo-stage-area">
-            <div id="solo-step-guide" class="solo-step-guide">
-              <span id="solo-step-badge" class="solo-step-badge">1. 再生待機</span>
-              <span id="solo-step-text">「読み上げ開始」ボタンを押して音声を再生してください</span>
-            </div>
-
-            <div class="solo-action-container">
-              <!-- Idle State: Play Button -->
-              <button id="btn-solo-play" class="btn btn-solo-main btn-solo-play">▶️ 読み上げ開始 (Space)</button>
-
-              <!-- Reading State: Giant Buzzer Button -->
-              <button id="btn-solo-buzz" class="giant-buzz-button solo-buzz-btn hidden">
-                <div class="buzz-inner">
-                  <span class="buzz-icon">🔴</span>
-                  <span class="buzz-text">早押し！</span>
-                  <span class="buzz-sub">[ SPACE ]</span>
-                </div>
+            <!-- 3. Buzzed State: Pass vs Show Answer Choice -->
+            <div id="choice-container" class="choice-grid hidden">
+              <button id="btn-pass" class="btn btn-choice btn-pass">
+                ↩️ パス (最初から読み直す)
               </button>
+              <button id="btn-show-answer" class="btn btn-choice btn-answer">
+                👁️ 回答を表示 (Enter)
+              </button>
+            </div>
 
-              <!-- Buzzed State: Pass vs Show Answer Grid -->
-              <div id="solo-choice-container" class="solo-choice-grid hidden">
-                <button id="btn-solo-pass" class="btn btn-solo-choice btn-pass">↩️ パス (最初から読み直す)</button>
-                <button id="btn-solo-show-answer" class="btn btn-solo-choice btn-answer">👁️ 回答を表示 (Enter)</button>
-              </div>
-
-              <!-- Answer Shown State: Next Question Button -->
-              <div id="solo-next-container" class="solo-next-grid hidden">
-                <button id="btn-solo-next" class="btn btn-solo-main btn-solo-next">⏭️ 次の問題へ (Space / Enter)</button>
-                <button id="btn-solo-reread" class="btn btn-ctrl">🔄 最初から読み直す</button>
-              </div>
+            <!-- 4. Answer Shown State: Next Question Button -->
+            <div id="next-container" class="next-grid hidden">
+              <button id="btn-next-solo" class="btn btn-main btn-next">
+                ⏭️ 次の問題へ (Space / Enter)
+              </button>
+              <button id="btn-reread" class="btn btn-ctrl">
+                🔄 最初から読み直す
+              </button>
             </div>
           </div>
-
-          <!-- ================= MULTIPLAYER MODE STAGE ================= -->
-          <div id="multi-stage-panel" class="multi-stage-area hidden">
-            <!-- Giant Buzz Button & Countdown Stage -->
-            <div class="buzz-stage-area">
-              <!-- Giant Buzzer Button -->
-              <div class="buzzer-container">
-                <button id="btn-buzz" class="giant-buzz-button">
-                  <div class="buzz-inner">
-                    <span class="buzz-icon">🔴</span>
-                    <span class="buzz-text">早押し！</span>
-                    <span class="buzz-sub">[ SPACE / スマホ ]</span>
-                  </div>
-                </button>
-              </div>
-
-              <!-- Answer Countdown & Judge Panel -->
-              <div class="judge-container">
-                <!-- Timer Display -->
-                <div id="timer-display" class="timer-display hidden">
-                  <span class="timer-label">解答時間</span>
-                  <span id="timer-count" class="timer-count">5</span>
-                  <div class="timer-bar-bg">
-                    <div id="timer-bar-fill" class="timer-bar-fill"></div>
-                  </div>
-                </div>
-
-                <!-- Judgement Buttons -->
-                <div class="judge-buttons">
-                  <button id="btn-correct" class="btn btn-judge btn-correct">
-                    <span class="judge-icon">⭕</span>
-                    <span class="judge-label">正解</span>
-                  </button>
-                  <button id="btn-incorrect" class="btn btn-judge btn-incorrect">
-                    <span class="judge-icon">❌</span>
-                    <span class="judge-label">不正解</span>
-                  </button>
-                  <button id="btn-through" class="btn btn-judge btn-through">
-                    <span class="judge-icon">➡️</span>
-                    <span class="judge-label">スルー / 次へ</span>
-                  </button>
-                </div>
-              </div>
-
-            </div>
-
-            <!-- Playback Controls Toolbar -->
-            <div class="playback-toolbar">
-              <button id="btn-play" class="btn btn-play">▶️ 読み上げ開始 (Space)</button>
-              <button id="btn-pause" class="btn btn-ctrl">⏸ 一時停止</button>
-              <button id="btn-stop" class="btn btn-ctrl">⏹ 停止</button>
-              <button id="btn-restart" class="btn btn-ctrl">🔄 問題リセット</button>
-              <button id="btn-stage-abc" class="btn btn-abc-stage" title="http://qss.quiz-island.site/abcgo-gacha/ から新しく100問を取得">🎲 ガチャから100問を取得</button>
-            </div>
-          </div>
-
         </div>
-      </section>
 
-      <!-- ================= TAB 2: QUESTION BANK ================= -->
-      <section id="bank-tab" class="tab-content">
-        <div class="bank-container">
-          
-          <div class="bank-toolbar">
-            <div class="bank-title-area">
-              <h2>登録問題一覧</h2>
-              <span id="bank-count-info">全 0 問</span>
-            </div>
-            <div class="bank-action-buttons">
-              <button id="btn-bank-abc" class="btn btn-abc" title="http://qss.quiz-island.site/abcgo-gacha/ から新しく100問を取得">🎲 ガチャから100問を取得</button>
-              <button id="btn-open-import" class="btn btn-secondary">📥 CSV/一括インポート</button>
-              <button id="btn-open-add" class="btn btn-primary">➕ 問題を手動追加</button>
-              <button id="btn-shuffle-bank" class="btn btn-ctrl">🔀 シャッフル</button>
-              <button id="btn-clear-bank" class="btn btn-danger">🗑 全削除</button>
-            </div>
-          </div>
-
-          <!-- Add / Edit Modal -->
-          <div id="add-modal" class="modal hidden">
-            <div class="modal-content">
-              <h3>新しい問題を追加</h3>
-              <div class="form-group">
-                <label>問題文（必須）:</label>
-                <textarea id="input-add-q" placeholder="例: 慣用句で、思いがけない幸運に恵まれることを「棚から何」というでしょう？" rows="3"></textarea>
-              </div>
-              <div class="form-group">
-                <label>正解（必須）:</label>
-                <input type="text" id="input-add-a" placeholder="例: 牡丹（ぼたもち）">
-              </div>
-              <div class="form-group">
-                <label>ジャンル（任意）:</label>
-                <input type="text" id="input-add-genre" placeholder="例: 国語・文学">
-              </div>
-              <div class="modal-buttons">
-                <button id="btn-save-add" class="btn btn-primary">保存する</button>
-                <button id="btn-close-add" class="btn btn-secondary">キャンセル</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Import Modal -->
-          <div id="import-modal" class="modal hidden">
-            <div class="modal-content">
-              <h3>問題の一括インポート</h3>
-              <p class="import-help">1行ごとに「<code>問題文,正解</code>」または「<code>問題文 [Tab] 正解</code>」の形式で入力してください。</p>
-              <textarea id="input-import-text" rows="8" placeholder="問題文1,正解1&#10;問題文2,正解2"></textarea>
-              <div class="modal-buttons">
-                <button id="btn-do-import" class="btn btn-primary">インポート実行</button>
-                <button id="btn-close-import" class="btn btn-secondary">閉じる</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Question Table -->
-          <div class="table-wrapper">
-            <table class="question-table">
-              <thead>
-                <tr>
-                  <th style="width: 60px;">No.</th>
-                  <th>問題文</th>
-                  <th style="width: 200px;">正解</th>
-                  <th style="width: 120px;">ジャンル</th>
-                  <th style="width: 100px;">操作</th>
-                </tr>
-              </thead>
-              <tbody id="question-table-body">
-                <!-- Dynamically populated -->
-              </tbody>
-            </table>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- ================= TAB 3: SETTINGS & SCORES ================= -->
-      <section id="settings-tab" class="tab-content">
-        <div class="settings-grid">
-          
-          <!-- Smartphone Buzzer Info -->
-          <div class="settings-card full-width">
-            <h3>📱 スマホ早押しコントローラー連携</h3>
-            <p>スマホや別のタブ・端末を早押しボタンとして使用できます！下記ボタンからスマホ用ボタン画面（<code>player.html</code>）を開いてください。</p>
-            <div style="margin-top: 0.5rem; display: flex; gap: 1rem; align-items: center;">
-              <a href="player.html" target="_blank" class="btn btn-mobile-link" style="font-size: 1rem; padding: 0.75rem 1.5rem;">
-                📱 スマホ用早押し画面 (player.html) を開く
-              </a>
-              <span style="font-size: 0.85rem; color: var(--text-secondary);">※同じWi-Fi/ブラウザ内から連携可能</span>
-            </div>
-          </div>
-
-          <!-- Audio & Speech Settings -->
-          <div class="settings-card">
-            <h3>🎙️ 音声合成（読み上げ）設定</h3>
-            
-            <div class="form-group">
-              <label>音声ボイス:</label>
-              <select id="select-voice" class="select-full"></select>
-            </div>
-
-            <div class="form-group">
-              <label>読み上げ速度 (Speed): <span id="rate-value" class="val-badge">1.3x</span></label>
-              <input type="range" id="range-rate" min="0.8" max="2.5" step="0.1" value="1.3">
-              <div class="range-labels">
-                <span>0.8x (ゆっくり)</span>
-                <span>1.3x (標準早押し)</span>
-                <span>2.5x (超高速)</span>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label>ピッチ (Pitch): <span id="pitch-value" class="val-badge">1.0</span></label>
-              <input type="range" id="range-pitch" min="0.5" max="1.5" step="0.1" value="1.0">
-            </div>
-
-            <button id="btn-test-speech" class="btn btn-secondary">🔊 声のテスト再生</button>
-          </div>
-
-          <!-- Quiz Rules & Timer Settings -->
-          <div class="settings-card">
-            <h3>⏱️ ルール・タイマー設定</h3>
-
-            <div class="form-group">
-              <label>早押し後の解答制限時間:</label>
-              <select id="select-timer-sec" class="select-full">
-                <option value="3">3秒</option>
-                <option value="5" selected>5秒（標準）</option>
-                <option value="7">7秒</option>
-                <option value="10">10秒</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label>正解時の加点ポイント:</label>
-              <input type="number" id="input-correct-pt" value="100" class="input-full">
-            </div>
-
-            <div class="form-group">
-              <label>不正解時の減点ポイント:</label>
-              <input type="number" id="input-incorrect-pt" value="50" class="input-full">
-            </div>
-          </div>
-
-          <!-- Scoreboard / Player Manager -->
-          <div class="settings-card full-width">
-            <div class="scoreboard-header">
-              <h3>🏆 スコアボード・対戦記録</h3>
-              <div class="score-actions">
-                <button id="btn-reset-scores" class="btn btn-danger btn-sm">🔄 得点をリセット</button>
-              </div>
-            </div>
-
-            <div class="score-cards-container">
-              <div class="player-score-card">
-                <div class="player-name">プレイヤー / チーム</div>
-                <div id="player-score-val" class="score-display">0 <span class="unit">pt</span></div>
-                <div class="score-stats">
-                  <span class="stat-correct">正解: <strong id="stat-correct-count">0</strong></span>
-                  <span class="stat-incorrect">誤答: <strong id="stat-incorrect-count">0</strong></span>
-                </div>
-                <div class="manual-score-adjust">
-                  <button id="btn-add-100" class="btn btn-sm btn-correct">+100</button>
-                  <button id="btn-sub-50" class="btn btn-sm btn-incorrect">-50</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-    </main>
-  </div>
-
-  <!-- Initial Mode Selection Modal -->
-  <div id="mode-select-modal" class="modal">
-    <div class="modal-content mode-modal-content">
-      <div class="mode-modal-header">
-        <h2>🎮 プレイモードを選択してください</h2>
-        <p>どちらのモードで遊ぶか選択してください</p>
       </div>
+    </main>
 
-      <div class="mode-cards-grid">
-        <div id="card-choose-solo" class="mode-card primary-mode">
-          <div class="mode-card-badge">一人練習</div>
-          <div class="mode-card-icon">👤</div>
-          <h3>ひとりで遊ぶ</h3>
-          <p class="mode-desc">「読み上げ開始」で音声再生、自分のタイミングで早押し！「パス（最初から読み直す）」か「解答を表示」を選択できます。</p>
-          <button id="btn-choose-solo" class="btn btn-mode-select btn-primary">👤 「ひとりで」始める</button>
+    <!-- Voice Settings Drawer / Modal -->
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>⚙️ 音声・読み上げ設定</h3>
+          <button id="btn-close-settings" class="btn-close">✕</button>
         </div>
+        <div class="settings-body">
+          <div class="form-group">
+            <label>🎙️ 読み上げボイス (おすすめ高音質ボイス優先):</label>
+            <select id="select-voice" class="select-full"></select>
+          </div>
 
-        <div id="card-choose-multi" class="mode-card secondary-mode">
-          <div class="mode-card-badge">対戦・ホスト</div>
-          <div class="mode-card-icon">👥</div>
-          <h3>みんなで遊ぶ</h3>
-          <p class="mode-desc">複数人対戦・スコア記録・正誤判定・解答制限タイマーに対応！スマホを早押しボタン(player.html)として接続して対戦できます。</p>
-          <button id="btn-choose-multi" class="btn btn-mode-select btn-secondary">👥 「みんなで」始める</button>
+          <div class="form-group">
+            <label>⚡ 読み上げ速度: <span id="rate-value" class="val-badge">1.3x</span></label>
+            <input type="range" id="range-rate" min="0.8" max="2.5" step="0.1" value="1.3">
+            <div class="range-labels">
+              <span>0.8x (ゆっくり)</span>
+              <span>1.3x (標準早押し)</span>
+              <span>2.5x (超高速)</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>🎵 ピッチ (声の高さ): <span id="pitch-value" class="val-badge">1.0</span></label>
+            <input type="range" id="range-pitch" min="0.6" max="1.4" step="0.1" value="1.0">
+          </div>
+
+          <button id="btn-test-speech" class="btn btn-secondary btn-full">
+            🔊 声のテスト再生
+          </button>
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- Scripts -->
