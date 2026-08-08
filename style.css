@@ -308,6 +308,19 @@ body {
   padding: 0 2px;
 }
 
+.text-masked {
+  color: var(--text-muted);
+  letter-spacing: 3px;
+  opacity: 0.55;
+  font-size: 1.1rem;
+}
+
+.text-masked-all {
+  color: var(--primary-color);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
 .buzz-slash {
   color: var(--accent-red);
   font-size: 1.6rem;

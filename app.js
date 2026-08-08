@@ -1,12 +1,15 @@
 /**
  * ABC早押しクイズ 自動読み上げアプリ メインコントローラー (app.js)
- * Solo Mobile-First 決定版
+ * Solo Mobile-First & リアルタイム文字表示対応
  */
 document.addEventListener("DOMContentLoaded", () => {
   // 状態変数
   let soloState = "idle"; // "idle" | "reading" | "buzzed" | "answer_shown"
   let isBuzzed = false;
   let currentBuzzIndex = -1;
+
+  // 表示モード ("realtime" | "hidden" | "visible")
+  let textDisplayMode = localStorage.getItem("quiz_yomiage_text_mode") || "realtime";
 
   // DOM要素の参照取得
   const elements = {
@@ -45,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btnReread: document.getElementById("btn-reread"),
 
     // Settings Controls
+    selectTextMode: document.getElementById("select-text-mode"),
     selectVoice: document.getElementById("select-voice"),
     rangeRate: document.getElementById("range-rate"),
     rateValue: document.getElementById("rate-value"),
@@ -60,6 +64,11 @@ document.addEventListener("DOMContentLoaded", () => {
     setupKeyboardShortcuts();
 
     populateVoiceList();
+
+    // 表示モードドロップダウンの初期選択
+    if (elements.selectTextMode) {
+      elements.selectTextMode.value = textDisplayMode;
+    }
 
     // 問題データが無い場合、http://qss.quiz-island.site/abcgo-gacha/ から自動取得
     if (!questionManager.questions || questionManager.questions.length === 0) {
@@ -190,16 +199,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function handlePass() {
     // パスが選ばれたら最初から読み直す
     elements.buzzMarkerInfo.classList.add("hidden");
-    const qData = questionManager.getCurrentQuestion();
-    if (qData) {
-      renderFullQuestionText();
-    }
     startSoloReading();
   }
 
   function handleShowAnswer() {
     soundEngine.playCorrect();
     soloState = "answer_shown";
+    renderFullQuestionText(); // 全文を表示
     updateSoloUI();
   }
 
@@ -209,7 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------
-  // 問題レンダリング
+  // 問題レンダリング & リアルタイム表示
   // ----------------------------------------------------
   function renderCurrentQuestion() {
     speechEngine.stop();
@@ -233,11 +239,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     elements.qGenreTag.textContent = qData.genre || "ABC過去問";
-    elements.questionTextBox.textContent = qData.q;
     elements.answerText.textContent = qData.a;
     elements.answerBox.classList.add("hidden");
-
     elements.buzzMarkerInfo.classList.add("hidden");
+
+    // 表示モードに合わせた初期メッセージ・テキスト表示
+    if (textDisplayMode === "realtime") {
+      elements.questionTextBox.innerHTML = '<span class="placeholder-text">「読み上げ開始」を押すと、音声に合わせて文字が表示されます</span>';
+    } else if (textDisplayMode === "hidden") {
+      elements.questionTextBox.innerHTML = '<span class="placeholder-text">「読み上げ開始」を押すと音声が再生されます（問題文は早押しまで非表示）</span>';
+    } else {
+      elements.questionTextBox.textContent = qData.q;
+    }
+
     resetSoloState();
   }
 
@@ -260,9 +274,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const text = qData.q;
     const spoken = text.substring(0, charIndex);
-    const rest = text.substring(charIndex);
+    const unspoken = text.substring(charIndex);
 
-    elements.questionTextBox.innerHTML = `<span class="speech-highlight">${escapeHtml(spoken)}</span>${escapeHtml(rest)}`;
+    if (textDisplayMode === "realtime") {
+      // 読み上げられた位置までの文字のみ即時表示、未読文字はマスク
+      const maskedCount = Math.min(unspoken.length, 12);
+      const maskedStr = "❓".repeat(maskedCount);
+      elements.questionTextBox.innerHTML = 
+        `<span class="speech-highlight">${escapeHtml(spoken)}</span>` +
+        `<span class="text-masked">${maskedStr}</span>`;
+    } else if (textDisplayMode === "hidden") {
+      elements.questionTextBox.innerHTML = `<span class="text-masked-all">🔊 読み上げ中... (${charIndex}文字目)</span>`;
+    } else {
+      // visible (最初から全表示)
+      elements.questionTextBox.innerHTML = 
+        `<span class="speech-highlight">${escapeHtml(spoken)}</span>` +
+        `<span>${escapeHtml(unspoken)}</span>`;
+    }
   }
 
   function renderFullQuestionText() {
@@ -280,13 +308,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const beforeBuzz = text.substring(0, buzzIdx);
     const afterBuzz = text.substring(buzzIdx);
 
-    elements.questionTextBox.innerHTML = 
-      `<span class="speech-highlight">${escapeHtml(beforeBuzz)}</span>` +
-      `<span class="buzz-slash">/</span>` +
-      `<span>${escapeHtml(afterBuzz)}</span>`;
+    if (textDisplayMode === "realtime" || textDisplayMode === "hidden") {
+      const maskedCount = Math.min(afterBuzz.length, 12);
+      const maskedStr = "❓".repeat(maskedCount);
+      elements.questionTextBox.innerHTML = 
+        `<span class="speech-highlight">${escapeHtml(beforeBuzz)}</span>` +
+        `<span class="buzz-slash">/</span>` +
+        `<span class="text-masked">${maskedStr}</span>`;
+    } else {
+      elements.questionTextBox.innerHTML = 
+        `<span class="speech-highlight">${escapeHtml(beforeBuzz)}</span>` +
+        `<span class="buzz-slash">/</span>` +
+        `<span>${escapeHtml(afterBuzz)}</span>`;
+    }
 
     elements.buzzMarkerInfo.classList.remove("hidden");
-    elements.buzzPositionText.textContent = `「${beforeBuzz}」の直後（第${buzzIdx}文字目）で早押ししました！`;
+    elements.buzzPositionText.textContent = `「${beforeBuzz}」の直後（第${buzzIdx}文字目）で早押し！`;
   }
 
   // ----------------------------------------------------
@@ -363,6 +400,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // 設定要素コントロール
+    elements.selectTextMode.addEventListener("change", (e) => {
+      textDisplayMode = e.target.value;
+      localStorage.setItem("quiz_yomiage_text_mode", textDisplayMode);
+      renderCurrentQuestion();
+    });
+
     elements.rangeRate.addEventListener("input", (e) => {
       const val = e.target.value;
       elements.rateValue.textContent = `${val}x`;

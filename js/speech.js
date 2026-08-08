@@ -7,7 +7,7 @@ class SpeechEngine {
     this.synth = window.speechSynthesis;
     this.voices = [];
     this.selectedVoice = null;
-    this.rate = 1.3; // 早押しクイズに最適な標準速度 (1.3x)
+    this.rate = 1.0; // デフォルト読み上げ速度 (1.0x)
     this.pitch = 1.0;
     this.volume = 1.0;
     
