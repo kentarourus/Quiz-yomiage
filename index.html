@@ -13,18 +13,18 @@
 <body>
   <div class="app-container">
     
-    <!-- Header -->
+    <!-- Header (サイト名 | 問題取得 | 設定) -->
     <header class="app-header">
       <div class="logo-area">
         <span class="logo-icon">⚡</span>
-        <h1 class="app-title">ABC早押し <span>読み上げ</span></h1>
+        <h1 class="app-title">早押しクイズ</h1>
       </div>
       <div class="header-actions">
-        <button id="btn-refresh-gacha" class="btn btn-gacha" title="http://qss.quiz-island.site/abcgo-gacha/ から新しく100問を取得">
-          🎲 ガチャ100問更新
+        <button id="btn-refresh-gacha" class="btn btn-gacha" title="100問を取得">
+          問題取得
         </button>
-        <button id="btn-toggle-settings" class="btn btn-icon" title="音声設定を開く">
-          ⚙️
+        <button id="btn-toggle-settings" class="btn btn-circle-settings" title="設定を開く">
+          設定
         </button>
       </div>
     </header>
@@ -33,25 +33,25 @@
     <main class="app-main">
       <div class="quiz-container">
 
-        <!-- Info & Navigation Bar -->
-        <div class="info-bar">
-          <div class="q-progress">
-            <span class="q-label">問題</span>
-            <span id="current-q-num" class="q-num">1</span>
-            <span class="q-total">/ <span id="max-q-num">100</span></span>
-          </div>
-          <div id="q-genre-tag" class="genre-badge">ABC過去問</div>
-          <div class="nav-controls">
-            <button id="btn-prev-q" class="btn btn-sm">⏮ 前へ</button>
-            <select id="q-select-dropdown" class="select-sm"></select>
-            <button id="btn-next-q" class="btn btn-sm">次へ ⏭</button>
-          </div>
-        </div>
-
-        <!-- Question Text Card -->
+        <!-- 1. 【問題表示】 Card (Top Rounded Blue Card) -->
         <div class="question-card">
+          <!-- Info Bar -->
+          <div class="info-bar">
+            <div class="q-progress">
+              <span class="q-label">問題</span>
+              <span id="current-q-num" class="q-num">1</span>
+              <span class="q-total">/ <span id="max-q-num">100</span></span>
+            </div>
+            <div id="q-genre-tag" class="genre-badge">ABC過去問</div>
+            <div class="nav-controls">
+              <button id="btn-prev-q" class="btn btn-sm">⏮ 前へ</button>
+              <select id="q-select-dropdown" class="select-sm"></select>
+              <button id="btn-next-q" class="btn btn-sm">次へ ⏭</button>
+            </div>
+          </div>
+
           <div class="card-header">
-            <span class="card-title">【問題文】</span>
+            <span class="card-title">【問題表示】</span>
             <span id="speech-status" class="status-indicator ready">待機中</span>
           </div>
           
@@ -59,60 +59,65 @@
             <span class="placeholder-text">「読み上げ開始」を押すか、Spaceキーでスタート</span>
           </div>
 
-          <!-- Buzz Position Marker -->
+          <!-- Buzz Marker -->
           <div id="buzz-marker-info" class="buzz-marker-info hidden">
             <span class="buzz-badge">⚡ 早押し発生</span>
             <span id="buzz-position-text"></span>
           </div>
-
-          <!-- Answer Box -->
-          <div id="answer-box" class="answer-box hidden">
-            <span class="answer-label">【正解】</span>
-            <span id="answer-text" class="answer-text">----</span>
-          </div>
         </div>
 
-        <!-- Solo Stage Action Buttons Area -->
+        <!-- 2. 【回答】 Card (Middle Card in Answer Shown Wireframe Image) -->
+        <div id="answer-box" class="answer-card hidden">
+          <span class="answer-label">【回答】</span>
+          <span id="answer-text" class="answer-text">----</span>
+        </div>
+
+        <!-- 3. Action Area (State 1: Circle Button, State 2: Split Pills, State 3: Next Button) -->
         <div class="action-stage">
           <div id="step-guide" class="step-guide">
             <span id="step-badge" class="step-badge">STEP 1</span>
             <span id="step-text">「読み上げ開始」を押して音声を再生してください</span>
           </div>
 
-          <div class="buttons-container">
-            <!-- 1. Idle State: Play Button -->
-            <button id="btn-play" class="btn btn-main btn-play">
-              ▶️ 読み上げ開始 (Space)
-            </button>
-
-            <!-- 2. Reading State: Giant Buzzer Button -->
-            <button id="btn-buzz" class="giant-buzz-btn hidden">
-              <div class="buzz-inner">
-                <span class="buzz-icon">🔴</span>
-                <span class="buzz-text">早押し！</span>
-                <span class="buzz-sub">[ SPACE / タップ ]</span>
+          <!-- State 1: Red Circle Button (ボタン) -->
+          <div id="circle-button-container" class="circle-button-container">
+            <button id="btn-play" class="btn-circle btn-circle-play">
+              <div class="circle-inner">
+                <span class="circle-icon">▶️</span>
+                <span class="circle-text">読み上げ開始</span>
+                <span class="circle-sub">[ SPACE ]</span>
               </div>
             </button>
 
-            <!-- 3. Buzzed State: Pass vs Show Answer Choice -->
-            <div id="choice-container" class="choice-grid hidden">
-              <button id="btn-pass" class="btn btn-choice btn-pass">
-                ↩️ パス (最初から読み直す)
-              </button>
-              <button id="btn-show-answer" class="btn btn-choice btn-answer">
-                👁️ 回答を表示 (Enter)
-              </button>
-            </div>
+            <button id="btn-buzz" class="btn-circle btn-circle-buzz hidden">
+              <div class="circle-inner">
+                <span class="circle-icon">🔴</span>
+                <span class="circle-text">ボタン</span>
+                <span class="circle-sub">[ SPACE / タップ ]</span>
+              </div>
+            </button>
+          </div>
 
-            <!-- 4. Answer Shown State: Next Question Button -->
-            <div id="next-container" class="next-grid hidden">
-              <button id="btn-next-solo" class="btn btn-main btn-next">
-                ⏭️ 次の問題へ (Space / Enter)
-              </button>
-              <button id="btn-reread" class="btn btn-ctrl">
-                🔄 最初から読み直す
-              </button>
-            </div>
+          <!-- State 2: Split Semicircle Choice Grid (読み直し | 回答表示 Wireframe Image) -->
+          <div id="choice-container" class="split-pill-grid hidden">
+            <button id="btn-pass" class="btn btn-split btn-split-left">
+              <span class="split-icon">↩️</span>
+              <span class="split-text">読み直し</span>
+            </button>
+            <button id="btn-show-answer" class="btn btn-split btn-split-right">
+              <span class="split-icon">👁️</span>
+              <span class="split-text">回答表示</span>
+            </button>
+          </div>
+
+          <!-- State 3: Next Question Button (次の問題 Wireframe Image) -->
+          <div id="next-container" class="next-grid hidden">
+            <button id="btn-next-solo" class="btn btn-main btn-next">
+              ⏭️ 次の問題 (Space / Enter)
+            </button>
+            <button id="btn-reread" class="btn btn-ctrl">
+              🔄 最初から読み直す
+            </button>
           </div>
         </div>
 

@@ -6,7 +6,12 @@ class QuestionManager {
     this.questions = [];
     this.currentIndex = 0;
     this.storageKey = "quiz_yomiage_questions_v1";
+    this.preloadedBatch = null;
+    this.isPreloading = false;
     this.loadFromStorage();
+
+    // バックグラウンドで次の100問を事前ロード開始
+    setTimeout(() => this.preloadNextBatch(), 1000);
   }
 
   /**
@@ -38,58 +43,27 @@ class QuestionManager {
   }
 
   /**
-   * http://qss.quiz-island.site/abcgo-gacha/ から100問を非同期で毎回取得
+   * http://qss.quiz-island.site/abcgo-gacha/ から100問を爆速取得
+   * 事前ロード済みがあれば0ms即時反映！
    */
   async fetchAbcQuestionsFromGacha() {
-    const targetUrl = "http://qss.quiz-island.site/abcgo-gacha/";
+    // 1. 事前ロード済みのバッチがある場合は0msで即時反映！
+    if (this.preloadedBatch && this.preloadedBatch.length > 0) {
+      console.log("⚡ 0ms 即時取得: 事前ロード済みバッチを使用");
+      this.questions = this.preloadedBatch;
+      this.currentIndex = 0;
+      this.preloadedBatch = null;
+      this.saveToStorage();
 
-    const fetchMethods = [
-      async () => {
-        const res = await fetch(targetUrl, { redirect: "follow", cache: "no-store" });
-        if (res.ok) return await res.text();
-        return null;
-      },
-      async () => {
-        const proxyUrl = "https://proxy.cors.sh/" + targetUrl;
-        const res = await fetch(proxyUrl, { cache: "no-store" });
-        if (res.ok) return await res.text();
-        return null;
-      },
-      async () => {
-        const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetUrl) + "&ts=" + Date.now();
-        const res = await fetch(proxyUrl, { cache: "no-store" });
-        if (res.ok) {
-          const json = await res.json();
-          return json.contents || null;
-        }
-        return null;
-      },
-      async () => {
-        const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(targetUrl) + "&ts=" + Date.now();
-        const res = await fetch(proxyUrl, { cache: "no-store" });
-        if (res.ok) return await res.text();
-        return null;
-      },
-      async () => {
-        const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
-        const res = await fetch(proxyUrl, { cache: "no-store" });
-        if (res.ok) return await res.text();
-        return null;
-      }
-    ];
+      // バックグラウンドで次のバッチを事前ロード
+      setTimeout(() => this.preloadNextBatch(), 500);
 
-    let htmlText = null;
-    for (const fn of fetchMethods) {
-      try {
-        const text = await fn();
-        if (text && text.includes("quizzes_list")) {
-          htmlText = text;
-          break;
-        }
-      } catch (e) {
-        console.warn("Gacha fetch method failed:", e);
-      }
+      return { success: true, count: this.questions.length, source: "preloaded_instant", instant: true };
     }
+
+    // 2. 事前ロードが無い場合は並列通信レース (約400ms)
+    const targetUrl = "http://qss.quiz-island.site/abcgo-gacha/";
+    const htmlText = await this.fastParallelFetch(targetUrl);
 
     if (htmlText) {
       const fetched = this.parseGachaHtml(htmlText);
@@ -97,14 +71,86 @@ class QuestionManager {
         this.questions = fetched;
         this.currentIndex = 0;
         this.saveToStorage();
-        return { success: true, count: fetched.length, source: "http://qss.quiz-island.site/abcgo-gacha/" };
+
+        // バックグラウンドで次のバッチを事前ロード
+        setTimeout(() => this.preloadNextBatch(), 500);
+
+        return { success: true, count: fetched.length, source: "live_fast" };
       }
     }
 
-    // 万が一全てネットワークエラーとなった場合のローカルフォールバック
+    // 3. 全ネットワークエラー時のローカルフォールバック
     console.warn("Live fetch failed. Loading offline ABC dataset fallback.");
     this.loadAbcRandomQuestions(100);
     return { success: false, count: this.questions.length, source: "offline_fallback" };
+  }
+
+  /**
+   * 並列通信レース処理 (Promise.any + AbortController)
+   * 複数の通信先を同時に叩き、一番最速で返ってきた成功結果を即採用
+   */
+  async fastParallelFetch(targetUrl) {
+    const createFetchTask = (url, isJson = false) => async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      try {
+        const res = await fetch(url, { redirect: "follow", cache: "no-store", signal: controller.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          if (isJson) {
+            const json = await res.json();
+            if (json && json.contents && json.contents.includes("quizzes_list")) {
+              return json.contents;
+            }
+          } else {
+            const text = await res.text();
+            if (text && text.includes("quizzes_list")) {
+              return text;
+            }
+          }
+        }
+      } catch (e) {}
+      throw new Error(`Fetch failed for ${url}`);
+    };
+
+    const tasks = [
+      createFetchTask(targetUrl),
+      createFetchTask("https://api.allorigins.win/raw?url=" + encodeURIComponent(targetUrl) + "&ts=" + Date.now()),
+      createFetchTask("https://proxy.cors.sh/" + targetUrl),
+      createFetchTask("https://api.allorigins.win/get?url=" + encodeURIComponent(targetUrl) + "&ts=" + Date.now(), true)
+    ];
+
+    try {
+      return await Promise.any(tasks.map(fn => fn()));
+    } catch (e) {
+      console.warn("All parallel fetch tasks failed:", e);
+      return null;
+    }
+  }
+
+  /**
+   * バックグラウンドで次の100問を事前ロード (プレロード)
+   */
+  async preloadNextBatch() {
+    if (this.isPreloading || this.preloadedBatch) return;
+    this.isPreloading = true;
+    console.log("🔄 次の100問バッチをバックグラウンド事前取得中...");
+
+    try {
+      const targetUrl = "http://qss.quiz-island.site/abcgo-gacha/";
+      const htmlText = await this.fastParallelFetch(targetUrl);
+      if (htmlText) {
+        const fetched = this.parseGachaHtml(htmlText);
+        if (fetched && fetched.length > 0) {
+          this.preloadedBatch = fetched;
+          console.log("✅ バックグラウンド事前取得完了！次回は0msで即時反映されます");
+        }
+      }
+    } catch (e) {
+      console.warn("Preload error:", e);
+    } finally {
+      this.isPreloading = false;
+    }
   }
 
   /**

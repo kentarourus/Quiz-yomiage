@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
     answerText: document.getElementById("answer-text"),
 
     // Action Stage Elements
+    circleButtonContainer: document.getElementById("circle-button-container"),
     stepBadge: document.getElementById("step-badge"),
     stepText: document.getElementById("step-text"),
     btnPlay: document.getElementById("btn-play"),
@@ -130,32 +131,35 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateSoloUI() {
+    if (elements.circleButtonContainer) elements.circleButtonContainer.classList.add("hidden");
     elements.btnPlay.classList.add("hidden");
     elements.btnBuzz.classList.add("hidden");
     elements.choiceContainer.classList.add("hidden");
     elements.nextContainer.classList.add("hidden");
 
     if (soloState === "idle") {
+      if (elements.circleButtonContainer) elements.circleButtonContainer.classList.remove("hidden");
       elements.stepBadge.textContent = "STEP 1";
       elements.stepText.textContent = "「読み上げ開始」を押して音声を再生してください";
       elements.btnPlay.classList.remove("hidden");
       elements.speechStatus.textContent = "待機中";
       elements.speechStatus.className = "status-indicator ready";
     } else if (soloState === "reading") {
+      if (elements.circleButtonContainer) elements.circleButtonContainer.classList.remove("hidden");
       elements.stepBadge.textContent = "STEP 2";
-      elements.stepText.textContent = "🔊 音声読み上げ中... タイミングよく「早押し！」を押してください";
+      elements.stepText.textContent = "🔊 音声読み上げ中... タイミングよく「ボタン」を押してください";
       elements.btnBuzz.classList.remove("hidden");
       elements.speechStatus.textContent = "読み上げ中...";
       elements.speechStatus.className = "status-indicator playing";
     } else if (soloState === "buzzed") {
       elements.stepBadge.textContent = "STEP 3";
-      elements.stepText.textContent = "⚡ 早押し！ 「パス (最初から読み直す)」 または 「回答を表示」 を選択してください";
+      elements.stepText.textContent = "⚡ 早押し！ 「読み直し」 または 「回答表示」 を選択してください";
       elements.choiceContainer.classList.remove("hidden");
       elements.speechStatus.textContent = "⚡ 早押し停止中";
       elements.speechStatus.className = "status-indicator buzzed";
     } else if (soloState === "answer_shown") {
       elements.stepBadge.textContent = "STEP 4";
-      elements.stepText.textContent = "正解を表示しました。「次の問題へ」を押すと次の問題に進みます";
+      elements.stepText.textContent = "正解を表示しました。「次の問題」を押すと次の問題に進みます";
       elements.nextContainer.classList.remove("hidden");
       elements.answerBox.classList.remove("hidden");
       elements.speechStatus.textContent = "解答表示中";
@@ -327,7 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ----------------------------------------------------
-  // ABCガチャ (http://qss.quiz-island.site/abcgo-gacha/) からの取得
+  // ABCガチャ (http://qss.quiz-island.site/abcgo-gacha/) からの爆速取得
   // ----------------------------------------------------
   async function refreshAbc100Questions(showConfirm = true) {
     if (showConfirm && !confirm("http://qss.quiz-island.site/abcgo-gacha/ から100問を新しく取得しますか？\n（現在の問題リストは置き換わります）")) {
@@ -337,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const btn = elements.btnRefreshGacha;
     if (btn) {
       btn.disabled = true;
-      btn.textContent = "⏳ ガチャ取得中...";
+      btn.textContent = "⏳ 爆速取得中...";
     }
 
     try {
@@ -346,7 +350,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (showConfirm) {
         if (res && res.success) {
-          alert(`http://qss.quiz-island.site/abcgo-gacha/ から100問を取得しました！`);
+          const modeMsg = res.instant ? "⚡ 0秒で即時更新しました！" : "http://qss.quiz-island.site/abcgo-gacha/ から100問を取得しました！";
+          alert(modeMsg);
         } else {
           alert(`オンライン取得に失敗したため、オフライン用の過去問データ(100問)をセットしました。`);
         }
